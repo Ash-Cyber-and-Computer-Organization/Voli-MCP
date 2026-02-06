@@ -1,0 +1,16 @@
+- README.md
+- `pyproject.toml` / `requirements.txt`
+- src/
+  - src/mcp/__init__.py
+  - src/mcp/schema.py
+  - src/mcp/ingest.py
+  - src/mcp/features.py
+  - src/mcp/engine.py
+  - src/mcp/output.py
+  - src/mcp/api.py
+  - src/mcp/cli.py
+- examples/
+  - `examples/data/sample_eurusd.csv`
+  - `examples/run_demo.sh`
+- out/ (runtime outputs)
+- tests/

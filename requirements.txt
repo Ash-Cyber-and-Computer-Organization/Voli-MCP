@@ -1,0 +1,8 @@
+pydantic
+pandas
+numpy
+fastapi
+uvicorn
+typer
+orjson
+pytest
