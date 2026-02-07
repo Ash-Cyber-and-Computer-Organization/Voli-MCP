@@ -1,8 +1,9 @@
-pydantic
-pandas
-numpy
-fastapi
-uvicorn
-typer
-orjson
-pytest
+pydantic>=2.8,<3
+pandas>=2.1
+numpy>=1.26
+fastapi>=0.115
+uvicorn[standard]>=0.24
+typer>=0.9
+orjson>=3.10
+pytest>=8.2
+python-dateutil>=2.9
