@@ -1,7 +1,7 @@
 ﻿from __future__ import annotations
 
-from intelligence.session import detect_session
-from intelligence.volatility import volatility_for_session
+from src.session import detect_session
+from src.volatility import volatility_for_session
 
 
 def build_intel(pair: str) -> dict:
