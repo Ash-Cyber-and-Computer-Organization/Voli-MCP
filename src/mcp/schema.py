@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class HistoricalContext(BaseModel):
@@ -40,7 +40,8 @@ class MCPOutput(BaseModel):
     class Config:
         extra = "forbid"
 
-    @validator("pair", "session", "volatility_expectation", "agent_guidance", pre=True)
+    @field_validator("pair", "session", "volatility_expectation", "agent_guidance", mode="before")
+    @classmethod
     def _strip_and_validate_strings(cls, value: str) -> str:
         if not isinstance(value, str):
             raise TypeError("value must be a string")
@@ -49,11 +50,13 @@ class MCPOutput(BaseModel):
             raise ValueError("value must not be empty")
         return stripped
 
-    @validator("drivers", each_item=True)
-    def _validate_driver(cls, value: str) -> str:
-        if not isinstance(value, str):
-            raise TypeError("drivers must be strings")
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("driver entries must not be blank")
-        return stripped
+    @field_validator("drivers", mode="before")
+    @classmethod
+    def _validate_driver(cls, value: list[str]) -> list[str]:
+        for item in value:
+            if not isinstance(item, str):
+                raise TypeError("drivers must be strings")
+            stripped = item.strip()
+            if not stripped:
+                raise ValueError("driver entries must not be blank")
+        return [item.strip() for item in value]
