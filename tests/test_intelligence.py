@@ -62,7 +62,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(payload["volatility_expectation"], "Normal")
         self.assertEqual(payload["expected_deviation_pips"], 35)
         self.assertEqual(payload["confidence"], 0.7)
-        self.assertIn("Range compression detected (45 vs 52 pips baseline)", payload["drivers"])
+        self.assertIn("Range behavior within normal volatility bounds (45 vs 52 pips baseline)", payload["drivers"])
 
 
 if __name__ == "__main__":

@@ -30,17 +30,24 @@ def build_intel(pair: str) -> dict:
         guidance = "Normal range conditions; standard risk management applies."
 
     # Generate drivers from conditions
-    drivers = [
-        f"Range compression detected ({last_24h_range_pips} vs {avg_7day_range_pips} pips baseline)"
-    ]
+    if compression_ratio < 0.75:
+        range_driver = f"Range compression detected ({last_24h_range_pips} vs {avg_7day_range_pips} pips baseline)"
+    elif compression_ratio > 1.25:
+        range_driver = f"Range expansion detected ({last_24h_range_pips} vs {avg_7day_range_pips} pips baseline)"
+    else:
+        range_driver = f"Range behavior within normal volatility bounds ({last_24h_range_pips} vs {avg_7day_range_pips} pips baseline)"
 
-    # Add session-specific drivers if any
+    drivers = [range_driver]
+
+    # Add session-specific drivers (generic, not event-based)
     if session == "London Open":
-        drivers.append("ECB speech scheduled during NY overlap")
-        drivers.append("Pre-London positioning historically precedes volatility expansion on ECB days")
+        drivers.append("London session historically increases participation and volatility")
     elif session == "New York Open":
-        drivers.append("New York session liquidity and macro overlap")
-    # Asian and Off-session use default
+        drivers.append("New York session brings high liquidity and macro event sensitivity")
+    elif session == "Asian session":
+        drivers.append("Asian session typically shows range-bound conditions")
+    elif session == "Off-session":
+        drivers.append("Off-session hours have thinner liquidity")
 
     # Historical context (placeholder)
     historical_context = {
