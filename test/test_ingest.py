@@ -1,7 +1,14 @@
+import httpx
 import pytest
 import pandas as pd
 from datetime import datetime, time
-from src.mcp.ingest import read_csv, resample_session, _session_window, _session_mask
+from src.mcp.ingest import (
+    read_csv,
+    resample_session,
+    _session_window,
+    _session_mask,
+    pipeline_from_csv,
+)
 
 
 class TestIngest:
@@ -100,3 +107,45 @@ class TestIngest:
         mask = _session_mask(timestamps, time(22, 0), time(6, 0))
         assert mask.iloc[0] == True
         assert mask.iloc[1] == True
+
+    def test_pipeline_from_csv_calls_api(self, tmp_path, monkeypatch):
+        csv_file = tmp_path / "pipeline.csv"
+        csv_file.write_text("timestamp,bid,ask\n2023-01-01 09:00:00,1.1000,1.1010")
+
+        class DummyResponse:
+            def raise_for_status(self): pass
+
+            def json(self):
+                return {
+                    "pair": "EURUSD",
+                    "session": "London Open",
+                    "time_window_minutes": 90,
+                    "volatility_expectation": "High",
+                    "expected_deviation_pips": 38.0,
+                    "confidence": 0.74,
+                    "drivers": [
+                        "Asian session range compressed (18 pips vs 30-day avg of 32)",
+                        "ECB speech scheduled during NY overlap",
+                    ],
+                    "historical_context": {"similar_conditions_occurrences": 112, "expansion_rate": 0.62},
+                    "agent_guidance": "Avoid mean-reversion strategies; favor breakout or momentum confirmation setups.",
+                }
+
+        def fake_post(url, data=None, files=None, timeout=None):
+            assert "generate" in url
+            assert data["pair"] == "EURUSD" # type: ignore
+            assert files is not None
+            assert "csv_file" in files
+            return DummyResponse()
+
+        monkeypatch.setattr(httpx, "post", fake_post)
+        result = pipeline_from_csv(
+            csv_file,
+            "EURUSD",
+            "London Open",
+            time_window_minutes=90,
+            event="ECB",
+            event_overlap="NY",
+        )
+        assert result.pair == "EURUSD"
+        assert result.session == "London Open"

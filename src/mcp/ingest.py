@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from datetime import time
+from pathlib import Path
 from typing import Iterable
 
+import httpx
 import pandas as pd
+
+from .schema import MCPOutput
 
 SESSION_WINDOWS = {
     "asian": (time(0, 0), time(9, 0)),
@@ -13,6 +17,9 @@ SESSION_WINDOWS = {
     "ny": (time(12, 30), time(21, 0)),
     "new york": (time(12, 30), time(21, 0)),
 }
+
+DEFAULT_API_BASE_URL = "http://localhost:8000"
+DEFAULT_API_TIMEOUT = 30.0
 
 
 def read_csv(path: str) -> pd.DataFrame:
@@ -84,7 +91,90 @@ def _session_window(session_name: str | None) -> tuple[time, time]:
 def _session_mask(
     timestamps: Iterable[pd.Timestamp], start: time, end: time
 ) -> pd.Series:
-    times = pd.Series(list(timestamps)).dt.time
+    times = pd.Series(pd.DatetimeIndex(list(timestamps)).time)
     if start <= end:
         return (times >= start) & (times < end)
     return (times >= start) | (times < end)
+
+
+def pipeline_from_dataframe(
+    df: pd.DataFrame,
+    pair: str,
+    session: str,
+    time_window_minutes: int,
+    event: str | None = None,
+    event_overlap: str | None = None,
+    historical_stats_path: str | None = None,
+    api_base_url: str = DEFAULT_API_BASE_URL,
+    timeout: float = DEFAULT_API_TIMEOUT,
+) -> "MCPOutput":
+    """Use the MCP API to execute the full pipeline on a prepared DataFrame."""
+
+    csv_payload = df.to_csv(index=False, date_format="%Y-%m-%d %H:%M:%S").encode("utf-8")
+    return _post_to_api(
+        csv_bytes=csv_payload,
+        pair=pair,
+        session=session,
+        time_window_minutes=time_window_minutes,
+        event=event,
+        event_overlap=event_overlap,
+        historical_stats_path=historical_stats_path,
+        api_base_url=api_base_url,
+        timeout=timeout,
+    )
+
+
+def pipeline_from_csv(
+    csv_path: Path | str,
+    pair: str,
+    session: str,
+    time_window_minutes: int,
+    event: str | None = None,
+    event_overlap: str | None = None,
+    historical_stats_path: str | None = None,
+    api_base_url: str = DEFAULT_API_BASE_URL,
+    timeout: float = DEFAULT_API_TIMEOUT,
+) -> "MCPOutput":
+    """Pipe a CSV through MCP preprocessing and POST the data to the API."""
+
+    df = read_csv(str(csv_path))
+    return pipeline_from_dataframe(
+        df,
+        pair=pair,
+        session=session,
+        time_window_minutes=time_window_minutes,
+        event=event,
+        event_overlap=event_overlap,
+        historical_stats_path=historical_stats_path,
+        api_base_url=api_base_url,
+        timeout=timeout,
+    )
+
+
+def _post_to_api(
+    *,
+    csv_bytes: bytes | None,
+    pair: str,
+    session: str,
+    time_window_minutes: int,
+    event: str | None,
+    event_overlap: str | None,
+    historical_stats_path: str | None,
+    api_base_url: str,
+    timeout: float,
+) -> "MCPOutput":
+    from .schema import MCPOutput
+
+    url = f"{api_base_url.rstrip('/')}/generate"
+    data = {
+        "pair": pair,
+        "session": session,
+        "time_window_minutes": time_window_minutes,
+        "event": event or "",
+        "event_overlap": event_overlap or "",
+        "historical_stats_path": historical_stats_path or "",
+    }
+    files = {"csv_file": ("data.csv", csv_bytes, "text/csv")} if csv_bytes else None
+    response = httpx.post(url, data=data, files=files, timeout=timeout)
+    response.raise_for_status()
+    return MCPOutput(**response.json())
