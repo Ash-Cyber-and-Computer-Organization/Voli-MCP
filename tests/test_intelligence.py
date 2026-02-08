@@ -52,10 +52,17 @@ class VolatilityTests(unittest.TestCase):
 class EngineTests(unittest.TestCase):
     def test_engine_payload_shape(self):
         payload = build_intel("EURUSD")
-        for key in ["pair", "session", "time_window_minutes", "volatility_expectation", "expected_deviation_pips", "confidence", "drivers", "historical_context", "agent_guidance"]:
+        for key in ["pair", "session", "time_window_minutes", "volatility_expectation", "expected_deviation_pips", "confidence", "drivers", "historical_context", "agent_guidance", "last_24h_range_pips", "avg_7day_range_pips", "compression_ratio"]:
             self.assertIn(key, payload)
         self.assertEqual(payload["pair"], "EURUSD")
         self.assertEqual(payload["time_window_minutes"], 90)
+        self.assertEqual(payload["last_24h_range_pips"], 45)
+        self.assertEqual(payload["avg_7day_range_pips"], 52)
+        self.assertEqual(payload["compression_ratio"], 0.87)
+        self.assertEqual(payload["volatility_expectation"], "Normal")
+        self.assertEqual(payload["expected_deviation_pips"], 35)
+        self.assertEqual(payload["confidence"], 0.7)
+        self.assertIn("Range compression detected (45 vs 52 pips baseline)", payload["drivers"])
 
 
 if __name__ == "__main__":
