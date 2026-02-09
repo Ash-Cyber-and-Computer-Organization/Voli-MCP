@@ -1,4 +1,4 @@
-# Forex Session MCP - Developer Guide
+## Developer Guide
 
 Complete step-by-step guide for development and testing.
 
@@ -20,7 +20,7 @@ Complete step-by-step guide for development and testing.
 ### Step 1: Open Project in VSCode
 ```bash
 # Navigate to project directory
-cd /path/to/forex-session-mcp
+cd /path/to/Voli~MCP
 
 # Open in VSCode
 code .
@@ -31,10 +31,10 @@ code .
 **On Linux/Mac:**
 ```bash
 # Create virtual environment
-python3 -m venv venv
+python3 -m venv .venv
 
 # Activate it
-source venv/bin/activate
+source .venv/bin/activate
 
 # Your terminal should now show (venv) at the start
 ```
