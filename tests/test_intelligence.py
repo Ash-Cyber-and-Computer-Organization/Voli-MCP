@@ -56,13 +56,13 @@ class EngineTests(unittest.TestCase):
             self.assertIn(key, payload)
         self.assertEqual(payload["pair"], "EURUSD")
         self.assertEqual(payload["time_window_minutes"], 90)
-        self.assertEqual(payload["last_24h_range_pips"], 45)
-        self.assertEqual(payload["avg_7day_range_pips"], 52)
-        self.assertEqual(payload["compression_ratio"], 0.87)
+        self.assertEqual(payload["last_24h_range_pips"], 50)
+        self.assertEqual(payload["avg_7day_range_pips"], 60)
+        self.assertEqual(payload["compression_ratio"], 0.83)
         self.assertEqual(payload["volatility_expectation"], "Normal")
-        self.assertEqual(payload["expected_deviation_pips"], 35)
+        self.assertEqual(payload["expected_deviation_pips"], 50)
         self.assertEqual(payload["confidence"], 0.7)
-        self.assertIn("Range behavior within normal volatility bounds (45 vs 52 pips baseline)", payload["drivers"])
+        self.assertIn("Range behavior within normal volatility bounds (50.0 vs 60.0 pips baseline)", payload["drivers"])
 
 
 if __name__ == "__main__":

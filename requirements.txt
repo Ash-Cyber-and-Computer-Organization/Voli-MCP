@@ -1,2 +1,4 @@
 ﻿fastapi==0.115.8
 uvicorn==0.30.6
+yfinance>=0.2.40
+pandas>=1.3.0
