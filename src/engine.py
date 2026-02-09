@@ -1,10 +1,17 @@
 ﻿from __future__ import annotations
 
+import requests
 import yfinance as yf
 import pandas as pd
 
 from src.session import detect_session
 from src.volatility import volatility_for_session
+
+# Create a reusable session for yfinance
+yf_session = requests.Session()
+yf_session.headers.update({
+    "User-Agent": "Mozilla/5.0"
+})
 
 
 def get_symbol(pair: str) -> str:
@@ -20,12 +27,12 @@ def get_symbol(pair: str) -> str:
 
 
 def build_intel(pair: str) -> dict:
-    session = detect_session()
+    session_name = detect_session()
 
     # Fetch fresh market data for the pair
     symbol = get_symbol(pair)
     print(f"Fetching data for {symbol}")
-    data = yf.download(symbol, period="7d", interval="1h")
+    data = yf.download(symbol, period="7d", interval="1h", session=yf_session)
 
     if data.empty:
         # Fallback to default values if data unavailable
@@ -89,13 +96,13 @@ def build_intel(pair: str) -> dict:
     drivers = [range_driver]
 
     # Add session-specific drivers (generic, not event-based)
-    if session == "London Open":
+    if session_name == "London Open":
         drivers.append("London session historically increases participation and volatility")
-    elif session == "New York Open":
+    elif session_name == "New York Open":
         drivers.append("New York session brings high liquidity and macro event sensitivity")
-    elif session == "Asian session":
+    elif session_name == "Asian session":
         drivers.append("Asian session typically shows range-bound conditions")
-    elif session == "Off-session":
+    elif session_name == "Off-session":
         drivers.append("Off-session hours have thinner liquidity")
 
     # Historical context (placeholder)
@@ -106,7 +113,7 @@ def build_intel(pair: str) -> dict:
 
     return {
         "pair": pair,
-        "session": session,
+        "session": session_name,
         "time_window_minutes": 90,
         "volatility_expectation": volatility_expectation,
         "expected_deviation_pips": expected_deviation_pips,
