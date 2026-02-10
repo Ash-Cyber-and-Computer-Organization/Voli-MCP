@@ -9,7 +9,7 @@ from typing import Dict, Optional
 class ConfidenceScorer:
     """Calculate confidence scores for volatility predictions."""
     
-    # Scoring weights
+    # When Scoring weights
     WEIGHTS = {
         "sample_size": 0.40,      # Historical pattern sample size
         "pattern_strength": 0.25,  # How strong the expansion pattern is
