@@ -10,3 +10,4 @@ test/__pycache__/test_features.cpython-313-pytest-9.0.2.pyc
 test/__pycache__/test_ingest.cpython-313-pytest-9.0.2.pyc
 test/__pycache__/test_schema.cpython-313-pytest-9.0.2.pyc
 tests/__pycache__/test_intelligence.cpython-313-pytest-9.0.2.pyc
+.env
