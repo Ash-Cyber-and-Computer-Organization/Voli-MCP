@@ -603,5 +603,16 @@ except Exception as e:
 Share the output for further debugging.
 
 ---
+## How to run the MCP on MCP INSPECTOR
 
-**Happy Testing! 🚀**
+## Activate your .venv
+### install the NPM package (using terminal):
+- sudo npm install -g @modelcontextprotocol/inspector
+### Confirm its installed using:
+ - npm list -g @modelcontextprotocol/inspector
+ ### it should show a result like this 
+ - usr/local/lib
+└── @modelcontextprotocol/inspector@0.20.0
+### Run your Server by first locating the server file ()
+- npx @modelcontextprotocol/inspector python -m src.server
+### It will open a web page on your browser and you can interact with your MCP using the terminal.

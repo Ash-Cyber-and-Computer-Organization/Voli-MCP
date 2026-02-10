@@ -93,7 +93,6 @@ class SessionAnalyzer:
         pattern_matcher = PatternMatcher(normalized_pair)
         
         # Step 1: Fetch current intraday data (last 2-3 hours for pre-session analysis)
-        print(f"Fetching intraday data for {display_pair}...")
         try:
             intraday_df = self.data_client.get_intraday_data(
                 normalized_pair,
@@ -102,9 +101,8 @@ class SessionAnalyzer:
             )
         except Exception as e:
             raise Exception(f"Failed to fetch intraday data: {str(e)}")
-        
+
         # Step 2: Fetch historical data for pattern matching
-        print(f"Fetching historical data for pattern matching...")
         try:
             historical_df = self.data_client.get_historical_sessions(
                 normalized_pair,
@@ -159,16 +157,20 @@ class SessionAnalyzer:
             threshold=0.15
         )
         
-        # Step 8: Check for economic events
+        # Step 8: Check for economic events (with fallback)
         print(f"Checking economic calendar...")
-        now = datetime.now(pytz.UTC)
-        session_start_dt = self._get_next_session_datetime(session_key)
-        session_end_dt = session_start_dt + timedelta(minutes=session_duration_minutes)
-        
-        nearby_event = self.calendar_client.check_event_proximity(
-            session_start_dt,
-            window_minutes=120
-        )
+        try:
+            session_start_dt = self._get_next_session_datetime(session_key)
+            nearby_event = self.calendar_client.check_event_proximity(
+                session_start_dt,
+                window_minutes=120
+            )
+            has_event = nearby_event is not None
+        except Exception as e:
+            # Calendar unavailable, continue without event data
+            print(f"Calendar check skipped: {e}")
+            nearby_event = None
+            has_event = False
         
         has_event = nearby_event is not None
         

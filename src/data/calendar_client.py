@@ -1,6 +1,6 @@
 """
 Economic calendar client for high-impact forex events.
-Uses Twelve Data economic calendar API.
+Uses multiple fallback strategies when API is unavailable.
 """
 
 import os
@@ -9,13 +9,11 @@ from datetime import datetime, timedelta
 import pytz
 from dotenv import load_dotenv
 
-from src.data.twelve_data_client import TwelveDataClient
-
 load_dotenv()
 
 
 class CalendarClient:
-    """Client for economic calendar data."""
+    """Client for economic calendar data with fallback strategies."""
     
     # High-impact event keywords
     HIGH_IMPACT_KEYWORDS = [
@@ -31,15 +29,32 @@ class CalendarClient:
         "RBA", "Reserve Bank"
     ]
     
-    def __init__(self, twelve_data_client: Optional[TwelveDataClient] = None):
+    # Known recurring high-impact events (days of month when they typically occur)
+    RECURRING_EVENTS = {
+        "US": {
+            "NFP": {"day": "first_friday", "time": "13:30"},
+            "FOMC": {"days": [1, 15], "time": "19:00"},  # Approximate
+            "CPI": {"day": "mid_month", "time": "13:30"},
+        },
+        "EU": {
+            "ECB": {"days": [1, 15], "time": "12:45"},  # ECB meetings
+            "GDP": {"day": "end_month", "time": "10:00"},
+        },
+        "UK": {
+            "BOE": {"days": [1, 15], "time": "12:00"},
+            "CPI": {"day": "mid_month", "time": "07:00"},
+        }
+    }
+    
+    def __init__(self, twelve_data_client: Optional[Any] = None):
         """
         Initialize calendar client.
         
         Args:
-            twelve_data_client: Optional Twelve Data client instance
+            twelve_data_client: Optional Twelve Data client (not used in fallback)
         """
-        from src.data.twelve_data_client import get_client
-        self.client = twelve_data_client or get_client()
+        # We'll use fallback mode by default since API endpoint is unavailable
+        self.use_fallback = True
     
     def get_upcoming_events(
         self,
@@ -48,71 +63,74 @@ class CalendarClient:
     ) -> List[Dict[str, Any]]:
         """
         Get upcoming high-impact economic events.
+        Uses heuristic-based fallback when API is unavailable.
         
         Args:
             hours_ahead: Look ahead window in hours
             country: Optional country filter (US, GB, EU, JP, etc.)
             
         Returns:
-            List of event dictionaries
-            
-        Example output:
-            [
-                {
-                    "event": "FOMC Interest Rate Decision",
-                    "country": "US",
-                    "datetime": "2025-02-10 19:00:00",
-                    "impact": "high",
-                    "currency": "USD"
-                }
-            ]
+            List of event dictionaries (may be empty if no events detected)
         """
-        try:
-            # Twelve Data economic calendar endpoint
-            params = {
-                "apikey": self.client.api_key,
-                "format": "JSON"
-            }
+        # Always use fallback mode since API endpoint doesn't work
+        return self._get_fallback_events(hours_ahead, country)
+    
+    def _get_fallback_events(
+        self,
+        hours_ahead: int,
+        country: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Fallback event detection using heuristics.
+        Detects likely high-impact events based on day/time patterns.
+        
+        Args:
+            hours_ahead: Hours to look ahead
+            country: Country filter
             
-            if country:
-                params["country"] = country
-            
-            response = self.client._make_request("economic_calendar", params)
-            
-            # Filter and format events
-            now = datetime.now(pytz.UTC)
-            cutoff = now + timedelta(hours=hours_ahead)
-            
-            events = []
-            for event_data in response.get("data", []):
-                event_time_str = event_data.get("datetime", "")
-                
-                # Parse event time
-                try:
-                    event_time = datetime.fromisoformat(event_time_str.replace("Z", "+00:00"))
-                except:
-                    continue
-                
-                # Filter by time window
-                if now <= event_time <= cutoff:
-                    # Check if high impact
-                    event_name = event_data.get("event", "")
-                    if self._is_high_impact(event_name):
-                        events.append({
-                            "event": event_name,
-                            "country": event_data.get("country", ""),
-                            "datetime": event_time.isoformat(),
-                            "impact": "high",
-                            "currency": event_data.get("currency", "")
-                        })
-            
-            return events
-            
-        except Exception as e:
-            # Fallback: return empty list if calendar API fails
-            # This ensures the main analysis can continue
-            print(f"Warning: Calendar API failed: {str(e)}")
-            return []
+        Returns:
+            List of potential events
+        """
+        events = []
+        now = datetime.now(pytz.UTC)
+        cutoff = now + timedelta(hours=hours_ahead)
+        
+        # Check for common event patterns
+        current_day = now.day
+        current_hour = now.hour
+        
+        # Check if it's first Friday (NFP day)
+        if self._is_first_friday(now) and current_hour < 14:
+            # NFP typically at 13:30 UTC
+            nfp_time = now.replace(hour=13, minute=30, second=0, microsecond=0)
+            if now < nfp_time < cutoff:
+                events.append({
+                    "event": "US Non-Farm Payrolls (NFP)",
+                    "country": "US",
+                    "datetime": nfp_time.isoformat(),
+                    "impact": "high",
+                    "currency": "USD",
+                    "source": "heuristic"
+                })
+        
+        # Check for mid-month CPI releases (typically around 12th-15th)
+        if 12 <= current_day <= 15:
+            # US CPI typically at 13:30 UTC
+            cpi_time = now.replace(hour=13, minute=30, second=0, microsecond=0)
+            if now < cpi_time < cutoff and now.day == cpi_time.day:
+                events.append({
+                    "event": "US Consumer Price Index (CPI)",
+                    "country": "US",
+                    "datetime": cpi_time.isoformat(),
+                    "impact": "high",
+                    "currency": "USD",
+                    "source": "heuristic"
+                })
+        
+        # Check for FOMC/ECB meeting days (typically occur on specific weeks)
+        # This is a simplified heuristic - real dates vary
+        
+        return events
     
     def check_event_proximity(
         self,
@@ -129,7 +147,7 @@ class CalendarClient:
         Returns:
             Event dict if found, None otherwise
         """
-        hours_ahead = (window_minutes * 2) / 60  # Convert to hours, search both directions
+        hours_ahead = (window_minutes * 2) / 60
         events = self.get_upcoming_events(hours_ahead=int(hours_ahead))
         
         for event in events:
@@ -155,7 +173,7 @@ class CalendarClient:
             session_end: Session end time
             
         Returns:
-            List of events during session
+            List of events during session (may be empty)
         """
         duration_hours = (session_end - session_start).total_seconds() / 3600
         events = self.get_upcoming_events(hours_ahead=int(duration_hours + 2))
@@ -181,6 +199,23 @@ class CalendarClient:
         event_upper = event_name.upper()
         return any(keyword.upper() in event_upper for keyword in self.HIGH_IMPACT_KEYWORDS)
     
+    def _is_first_friday(self, dt: datetime) -> bool:
+        """
+        Check if date is the first Friday of the month.
+        
+        Args:
+            dt: Datetime to check
+            
+        Returns:
+            True if first Friday
+        """
+        # Check if it's Friday (weekday 4)
+        if dt.weekday() != 4:
+            return False
+        
+        # Check if it's in the first week (day 1-7)
+        return 1 <= dt.day <= 7
+    
     def format_event_for_driver(self, event: Dict[str, Any]) -> str:
         """
         Format event as a driver string for output.
@@ -190,9 +225,6 @@ class CalendarClient:
             
         Returns:
             Formatted driver string
-            
-        Example:
-            "FOMC Interest Rate Decision scheduled during NY session"
         """
         event_name = event.get("event", "Economic event")
         
@@ -212,7 +244,12 @@ class CalendarClient:
         else:
             session = "off-hours"
         
-        return f"{event_name} scheduled during {session}"
+        # Add context about source
+        source_note = ""
+        if event.get("source") == "heuristic":
+            source_note = " (check economic calendar for confirmation)"
+        
+        return f"{event_name} may be scheduled during {session}{source_note}"
 
 
 # Singleton instance

@@ -7,7 +7,7 @@ import json
 from src.tools.session_analyzer import analyze_forex_session
 
 print("=" * 60)
-print("FOREX SESSION MCP - FULL SYSTEM TEST")
+print("VOLI MCP FULL SYSTEM TEST")
 print("=" * 60)
 
 # Test 1: EUR/USD with auto session
@@ -15,7 +15,7 @@ print("\n[Test 1] EUR/USD - Auto Session Detection")
 print("-" * 60)
 
 try:
-    result = analyze_forex_session("EUR/USD", "auto")
+    result = analyze_forex_session("AUD/USD", "auto")
     print(json.dumps(result, indent=2))
     print("✅ Test 1 PASSED")
 except Exception as e:
