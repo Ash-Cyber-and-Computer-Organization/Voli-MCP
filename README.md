@@ -1,4 +1,4 @@
-`# VOLI - MCP Server for Forex Session Volatility Analysis
+# VOLI - MCP Server for Forex Session Volatility Analysis
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -131,7 +131,7 @@ pip list
 python -c "from src.tools.session_analyzer import analyze_forex_session; print('Installation successful')"
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Environment Variables
 
