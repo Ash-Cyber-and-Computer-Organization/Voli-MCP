@@ -1,7 +1,46 @@
-# Voli-MCP
-The offical MCP repo for the Voli~MCP
-Sample structured JSON output
+# Voli
 
+MCP server providing forex session volatility analysis and trading guidance.
+
+## Features
+
+- Real-time session volatility analysis (Asian, London, NY)
+- Historical pattern matching without database
+- Confidence scoring based on market conditions
+- Economic calendar integration
+- Pure API-based implementation
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
+```bash
+   pip install -e .
+```
+
+3. Configure environment:
+```bash
+   cp .env.example .env
+   # Edit .env and add your Twelve Data API key
+```
+
+## Usage
+
+Run the MCP server:
+```bash
+python -m src.server
+```
+
+## API Tool
+
+### `analyze_forex_session`
+
+**Inputs:**
+- `pair` (string, required): Currency pair (e.g., "EUR/USD")
+- `target_session` (string, optional): "asian", "london", "ny", or "auto"
+
+**Output:**
+```json
 {
   "pair": "EURUSD",
   "session": "London Open",
@@ -9,15 +48,17 @@ Sample structured JSON output
   "volatility_expectation": "High",
   "expected_deviation_pips": 38,
   "confidence": 0.74,
-  "drivers": [
-    "Asian session range compressed (18 pips vs 30-day avg of 32)",
-    "ECB speech scheduled during NY overlap",
-    "Pre-London positioning historically precedes volatility expansion on ECB days"
-  ],
-  "historical_context": {
-    "similar_conditions_occurrences": 112,
-    "expansion_rate": 0.62
-  },
-  "agent_guidance": "Avoid mean-reversion strategies; favor breakout or momentum confirmation setups."
+  "drivers": [...],
+  "historical_context": {...},
+  "agent_guidance": "..."
 }
-This justifies a $0.10–$0.50/query model for agents that need repeated, structured intelligence rather than static charts.
+```
+
+## Requirements
+
+- Python 3.10+
+- Twelve Data API key (free tier: 800 requests/day)
+
+## License
+
+MIT
