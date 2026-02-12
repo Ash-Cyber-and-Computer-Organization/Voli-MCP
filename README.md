@@ -1,5 +1,5 @@
 # VOLI-MCP {MCP Server for Forex Session Volatility Analysis}
-A MCP (Model Context Protocol) server that provides real-time forex session volatility analysis and trading guidance. Leverages historical pattern matching, market data, and economic calendar integration to deliver actionable insights for forex traders. 
+_A MCP (Model Context Protocol) server that provides real-time forex session volatility analysis and trading guidance. Leverages historical pattern matching, market data, and economic calendar integration to deliver actionable insights for forex traders._
 
 <p align="center">
   
