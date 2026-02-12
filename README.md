@@ -1,10 +1,20 @@
-# VOLI - MCP Server for Forex Session Volatility Analysis
+# VOLI-MCP {MCP Server for Forex Session Volatility Analysis}
+A sophisticated MCP (Model Context Protocol) server that provides real-time forex session volatility analysis and trading guidance. Leverages historical pattern matching, market data, and economic calendar integration to deliver actionable insights for forex traders. 
 
+<p align="center">
+  
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-1.0+-orange.svg)](https://modelcontextprotocol.io/)
 
-A sophisticated MCP (Model Context Protocol) server that provides real-time forex session volatility analysis and trading guidance. Leverages historical pattern matching, market data, and economic calendar integration to deliver actionable insights for forex traders.
+</p>
+
+## CRACKED DEVS BEHIND THIS
+
+<p align="center">
+  <img src="https://img.shields.io/badge/CONTRACTOR-X-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/MOH-DAKAI-green?style=for-the-badge" />
+</p>
 
 ##  Table of Contents
 
@@ -23,7 +33,7 @@ A sophisticated MCP (Model Context Protocol) server that provides real-time fore
 
 ##  Overview
 
-VOLI (Volatility Analysis for Forex Sessions) is an MCP server designed to analyze forex market volatility during different trading sessions (Asian, London, New York). It combines:
+VOLI-MCP (Volatility Analysis for Forex Sessions) is an MCP server designed to analyze forex market volatility during different trading sessions (Asian, London, New York). It combines:
 
 - **Real-time market data** from Twelve Data API
 - **Economic calendar integration** for event awareness
@@ -434,7 +444,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the protocol specification
 - [Anthropic](https://www.anthropic.com/) for Claude Desktop integration
 
-## 📞 Support
+##  Support
 
 - **Issues**: [GitHub Issues](https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP/issues)
 <!--- **Discussions**: [GitHub Discussions](https://github.com/your-username/voli-mcp/discussions) -->
