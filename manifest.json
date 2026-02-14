@@ -1,304 +1,39 @@
 {
-  "schema_version": "v1",
-  "name_for_model": "voli-forex-mcp",
-  "name_for_human": "VOLI Forex Session Analyzer",
-  "description_for_model": "MCP server for analyzing forex session volatility. Provides real-time volatility predictions, historical pattern matching, confidence scoring, and trading guidance for currency pairs during Asian, London, and New York trading sessions.",
-  "description_for_human": "A sophisticated MCP server that analyzes forex market volatility during different trading sessions. Uses historical pattern matching, real-time market data, and economic calendar integration to deliver actionable trading insights.",
-  "version": "0.1.0",
-  "mcp_spec_version": "1.0.0",
-  "license": "MIT",
+  "manifest_version": "0.2",
+  "name": "Voli-MCP",
+  "version": "1.0.1",
+  "description": "A MCP (Model Context Protocol) server that provides real-time forex session volatility analysis and trading guidance. Leverages historical pattern matching, market data, and economic calendar integration to deliver actionable insights for forex traders.",
   "author": {
-    "name": "VOLI Team",
-    "email": "contact@voli-forex.com"
+    "name": "Contractor-X,Moh-Dakai",
+    "email": "dada4ash@gmail.com",
+    "url": "https://github.com/Contractor-x"
   },
+  "homepage": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP",
+  "documentation": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP.git",
+  "icon": "icons/freepik__a_simple_icon_depleting_volatility_in_forex_m.png",
+  "server": {
+    "type": "python",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "${__dirname}/.venv/bin/python",
+      "args": [
+        "${__dirname}/src/server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "${__dirname}", 
+        "TWELVE_DATA_API_KEY": "387a8c1a99624466a701d85df579fb3b"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "VOLI-MCP"
+    }
+  ],
+  "tools_generated": true,
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP.git"
-  },
-  "homepage": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP",
-  "keywords": [
-    "forex",
-    "volatility",
-    "trading",
-    "mcp",
-    "currency",
-    "analysis",
-    "financial",
-    "pattern-matching"
-  ],
-  "platforms": {
-    "os": ["linux", "darwin", "win32"],
-    "python": ">=3.10"
-  },
-  "required_config": {
-    "TWELVE_DATA_API_KEY": {
-      "type": "string",
-      "description": "API key for Twelve Data forex market data",
-      "required": true,
-      "env_var": "TWELVE_DATA_API_KEY"
-    }
-  },
-  "optional_config": {
-    "MAX_REQUESTS_PER_DAY": {
-      "type": "integer",
-      "description": "Maximum API requests per day (default: 800)",
-      "default": 800,
-      "env_var": "MAX_REQUESTS_PER_DAY"
-    },
-    "REQUEST_DELAY_SECONDS": {
-      "type": "number",
-      "description": "Delay between API requests in seconds (default: 1)",
-      "default": 1,
-      "env_var": "REQUEST_DELAY_SECONDS"
-    },
-    "LOG_LEVEL": {
-      "type": "string",
-      "description": "Logging level (default: INFO)",
-      "default": "INFO",
-      "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
-      "env_var": "LOG_LEVEL"
-    }
-  },
-  "commands": [
-    {
-      "name": "python -m src.server",
-      "description": "Start the MCP server using stdio transport"
-    }
-  ],
-  "tools": [
-    {
-      "name": "analyze_forex_session",
-      "description": "Analyze forex session volatility and generate trading guidance",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "pair": {
-            "type": "string",
-            "description": "Currency pair to analyze (e.g., 'EUR/USD', 'GBP/USD', 'USD/JPY'). Supports majors, minors, and select exotics.",
-            "examples": ["EUR/USD", "GBP/JPY", "AUD/USD", "USD/CHF"],
-            "pattern": "^[A-Z]{3}/[A-Z]{3}$"
-          },
-          "target_session": {
-            "type": "string",
-            "description": "Trading session to analyze: 'asian', 'london', 'ny', or 'auto' for automatic detection of next session",
-            "enum": ["asian", "london", "ny", "auto"],
-            "default": "auto"
-          }
-        },
-        "required": ["pair"],
-        "additionalProperties": false
-      },
-      "output_schema": {
-        "type": "object",
-        "properties": {
-          "pair": {
-            "type": "string",
-            "description": "The analyzed currency pair"
-          },
-          "session": {
-            "type": "string",
-            "description": "Name of the trading session analyzed"
-          },
-          "time_window_minutes": {
-            "type": "integer",
-            "description": "Pre-session analysis window in minutes"
-          },
-          "volatility_expectation": {
-            "type": "string",
-            "enum": ["Low", "Medium", "High"],
-            "description": "Categorized volatility expectation"
-          },
-          "expected_deviation_pips": {
-            "type": "number",
-            "description": "Expected pip movement for the session"
-          },
-          "confidence": {
-            "type": "number",
-            "description": "Confidence score from 0 to 1"
-          },
-          "drivers": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of market drivers influencing the analysis"
-          },
-          "historical_context": {
-            "type": "object",
-            "properties": {
-              "similar_conditions_occurrences": {
-                "type": "integer"
-              },
-              "expansion_rate": {
-                "type": "number"
-              }
-            }
-          },
-          "agent_guidance": {
-            "type": "string",
-            "description": "Trading recommendations for the agent"
-          }
-        }
-      },
-      "examples": [
-        {
-          "input": {
-            "pair": "EUR/USD",
-            "target_session": "london"
-          },
-          "description": "Analyze EUR/USD volatility for London session"
-        },
-        {
-          "input": {
-            "pair": "GBP/JPY",
-            "target_session": "auto"
-          },
-          "description": "Automatically detect and analyze next session for GBP/JPY"
-        },
-        {
-          "input": {
-            "pair": "USD/JPY",
-            "target_session": "asian"
-          },
-          "description": "Analyze USD/JPY volatility for Asian session"
-        }
-      ]
-    }
-  ],
-  "supported_currency_pairs": {
-    "majors": [
-      "EUR/USD",
-      "GBP/USD",
-      "USD/JPY",
-      "USD/CHF",
-      "AUD/USD",
-      "USD/CAD",
-      "NZD/USD"
-    ],
-    "minors": [
-      "EUR/GBP",
-      "EUR/JPY",
-      "GBP/JPY",
-      "EUR/CHF",
-      "AUD/JPY",
-      "NZD/JPY",
-      "GBP/CHF",
-      "EUR/AUD",
-      "GBP/AUD",
-      "AUD/NZD"
-    ],
-    "exotics": [
-      "EUR/TRY",
-      "USD/TRY",
-      "USD/ZAR",
-      "USD/MXN"
-    ]
-  },
-  "supported_sessions": {
-    "asian": {
-      "name": "Asian Session",
-      "timezone": "UTC",
-      "start_hour": 0,
-      "start_minute": 0,
-      "end_hour": 9,
-      "end_minute": 0,
-      "major_centers": ["Tokyo", "Hong Kong", "Singapore"]
-    },
-    "london": {
-      "name": "London Session",
-      "timezone": "UTC",
-      "start_hour": 8,
-      "start_minute": 0,
-      "end_hour": 17,
-      "end_minute": 0,
-      "major_centers": ["London"]
-    },
-    "ny": {
-      "name": "New York Session",
-      "timezone": "UTC",
-      "start_hour": 13,
-      "start_minute": 0,
-      "end_hour": 22,
-      "end_minute": 0,
-      "major_centers": ["New York"]
-    }
-  },
-  "capabilities": {
-    "realtime_data": true,
-    "historical_analysis": true,
-    "pattern_matching": true,
-    "compression_detection": true,
-    "economic_calendar": true,
-    "confidence_scoring": true,
-    "auto_session_detection": true
-  },
-  "dependencies": {
-    "runtime": {
-      "python": ">=3.10"
-    },
-    "packages": {
-      "mcp": ">=1.0.0",
-      "pandas": ">=2.0.0",
-      "numpy": ">=1.24.0",
-      "requests": ">=2.31.0",
-      "aiohttp": ">=3.9.0",
-      "pytz": ">=2024.1",
-      "python-dateutil": ">=2.8.2",
-      "python-dotenv": ">=1.0.0"
-    }
-  },
-  "external_apis": {
-    "twelvedata": {
-      "name": "Twelve Data",
-      "url": "https://twelvedata.com/",
-      "description": "Forex market data provider",
-      "free_tier": {
-        "requests_per_day": 800,
-        "intraday_interval": "5min",
-        "historical_days": 60
-      }
-    }
-  },
-  "environment_variables": {
-    "TWELVE_DATA_API_KEY": "Your Twelve Data API key (required)",
-    "MAX_REQUESTS_PER_DAY": "Rate limit for API calls",
-    "REQUEST_DELAY_SECONDS": "Delay between requests",
-    "LOG_LEVEL": "Logging verbosity level"
-  },
-  "claude_desktop_config": {
-    "mcpServers": {
-      "voli-forex": {
-        "command": "python",
-        "args": ["-m", "src.server"],
-        "env": {
-          "TWELVE_DATA_API_KEY": "${TWELVE_DATA_API_KEY}"
-        }
-      }
-    }
-  },
-  "cli_usage": {
-    "start_server": "python -m src.server",
-    "test_tools": "python -m pytest tests/",
-    "http_api": "python api_wrapper.py",
-    "mcp_inspector": "npx @modelcontextprotocol/inspector python -m src.server"
-  },
-  "troubleshooting": {
-    "api_key_missing": "Set TWELVE_DATA_API_KEY in .env file",
-    "rate_limited": "Reduce request frequency or upgrade Twelve Data plan",
-    "import_errors": "Ensure virtual environment is activated and dependencies installed"
-  },
-  "changelog": [
-    {
-      "version": "0.1.0",
-      "date": "2024-01-01",
-      "changes": [
-        "Initial release",
-        "MCP server with analyze_forex_session tool",
-        "Support for Asian, London, and New York sessions",
-        "Historical pattern matching",
-        "Confidence scoring",
-        "Economic calendar integration"
-      ]
-    }
-  ]
+  }
 }
