@@ -1,0 +1,39 @@
+{
+  "manifest_version": "0.2",
+  "name": "Voli-MCP",
+  "version": "1.0.1",
+  "description": "A MCP (Model Context Protocol) server that provides real-time forex session volatility analysis and trading guidance. Leverages historical pattern matching, market data, and economic calendar integration to deliver actionable insights for forex traders.",
+  "author": {
+    "name": "Contractor-X,Moh-Dakai",
+    "email": "dada4ash@gmail.com",
+    "url": "https://github.com/Contractor-x"
+  },
+  "homepage": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP",
+  "documentation": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP.git",
+  "icon": "icons/freepik__a_simple_icon_depleting_volatility_in_forex_m.png",
+  "server": {
+    "type": "python",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "${__dirname}/.venv/bin/python",
+      "args": [
+        "${__dirname}/src/server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "${__dirname}", 
+        "TWELVE_DATA_API_KEY": "387a8c1a99624466a701d85df579fb3b"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "VOLI-MCP"
+    }
+  ],
+  "tools_generated": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP.git"
+  }
+}
