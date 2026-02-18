@@ -7,14 +7,14 @@ from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 import pytz
 
-from src.utils.sessions import (
+from utils.sessions import (
     get_current_session,
     get_next_session,
     get_session_info,
     is_weekend,
     SESSIONS
 )
-from src.utils.formatters import (
+from utils.formatters import (
     normalize_pair_format,
     display_pair_format,
     validate_pair,
