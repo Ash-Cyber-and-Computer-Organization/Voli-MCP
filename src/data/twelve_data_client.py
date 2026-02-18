@@ -122,7 +122,7 @@ class TwelveDataClient:
                 ...
             }
         """
-        from src.utils.formatters import display_pair_format
+        from utils.formatters import display_pair_format
 
         normalized = display_pair_format(pair)
         
@@ -161,7 +161,7 @@ class TwelveDataClient:
             2025-02-09 08:00:00  1.0850  1.0855  1.0848  1.0852   12500
             2025-02-09 08:05:00  1.0852  1.0858  1.0851  1.0857   15230
         """
-        from src.utils.formatters import display_pair_format
+        from utils.formatters import display_pair_format
 
         normalized = display_pair_format(pair)
 

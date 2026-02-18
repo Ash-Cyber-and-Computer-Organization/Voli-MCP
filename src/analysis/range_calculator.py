@@ -9,7 +9,7 @@ from typing import Dict, Tuple, Optional
 from datetime import datetime, time, timedelta
 import pytz
 
-from src.utils.formatters import get_pip_value, price_to_pips
+from utils.formatters import get_pip_value, price_to_pips
 
 
 class RangeCalculator:
