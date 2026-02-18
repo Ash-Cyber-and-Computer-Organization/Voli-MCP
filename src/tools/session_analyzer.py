@@ -22,11 +22,11 @@ from utils.formatters import (
     classify_volatility,
     generate_agent_guidance
 )
-from src.data.twelve_data_client import get_client
-from src.data.calendar_client import get_calendar_client
-from src.analysis.range_calculator import RangeCalculator
-from src.analysis.pattern_matcher import PatternMatcher
-from src.analysis.confidence_scorer import ConfidenceScorer
+from data.twelve_data_client import get_client
+from data.calendar_client import get_calendar_client
+from analysis.range_calculator import RangeCalculator
+from analysis.pattern_matcher import PatternMatcher
+from analysis.confidence_scorer import ConfidenceScorer
 
 
 class SessionAnalyzer:
