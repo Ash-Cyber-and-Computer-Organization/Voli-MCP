@@ -42,6 +42,70 @@ async def list_tools() -> list[Tool]:
                     }
                 },
                 "required": ["pair"]
+            },
+            outputSchema={
+                "type": "object",
+                "properties": {
+                    "pair": {
+                        "type": "string",
+                        "description": "Currency pair analyzed (e.g., 'EUR/USD')"
+                    },
+                    "session": {
+                        "type": "string",
+                        "description": "Trading session analyzed (e.g., 'London', 'Asian', 'NY', or 'Market Closed')"
+                    },
+                    "time_window_minutes": {
+                        "type": "integer",
+                        "description": "Analysis time window in minutes (pre-session analysis window)"
+                    },
+                    "volatility_expectation": {
+                        "type": "string",
+                        "enum": ["Low", "Medium", "High", "None"],
+                        "description": "Expected volatility level: 'Low', 'Medium', 'High', or 'None' (for weekends)"
+                    },
+                    "expected_deviation_pips": {
+                        "type": "number",
+                        "description": "Expected price deviation in pips for the session"
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "description": "Confidence score (0-1) indicating reliability of the prediction"
+                    },
+                    "drivers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of market drivers explaining the analysis"
+                    },
+                    "historical_context": {
+                        "type": "object",
+                        "properties": {
+                            "similar_conditions_occurrences": {
+                                "type": "integer",
+                                "description": "Number of historically similar conditions found"
+                            },
+                            "expansion_rate": {
+                                "type": "number",
+                                "description": "Historical expansion rate (0-1) indicating likelihood of volatility expansion"
+                            }
+                        },
+                        "description": "Historical pattern matching context"
+                    },
+                    "agent_guidance": {
+                        "type": "string",
+                        "description": "Trading strategy recommendation based on the analysis"
+                    }
+                },
+                "required": [
+                    "pair",
+                    "session",
+                    "time_window_minutes",
+                    "volatility_expectation",
+                    "expected_deviation_pips",
+                    "confidence",
+                    "drivers",
+                    "historical_context",
+                    "agent_guidance"
+                ]
             }
         )
     ]
