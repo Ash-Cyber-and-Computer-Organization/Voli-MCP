@@ -9,6 +9,8 @@ from mcp.server.sse import SseServerTransport
 from mcp.types import Tool, TextContent
 from tools.session_analyzer import analyze_forex_session
 from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import Response
 from starlette.routing import Route
 import uvicorn
 
@@ -78,21 +80,29 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
 
 
-# SSE transport setup
+# SSE transport — mount path must match the messages POST endpoint path
 sse = SseServerTransport("/messages")
 
-async def handle_sse(request):
+async def handle_sse(request: Request) -> Response:
+    """
+    SSE endpoint — keeps the connection open for the full MCP session,
+    then returns an empty Response when the session ends so Starlette
+    doesn't crash trying to call None as an ASGI app.
+    """
     async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
         await app.run(streams[0], streams[1], app.create_initialization_options())
+    return Response()  # <-- required: Starlette calls handler's return value as ASGI app
 
-async def handle_messages(request):
-    await sse.handle_post_message(request.scope, request.receive, request._send)
 
 # Starlette web app
+# NOTE: pass sse.handle_post_message directly as the endpoint — it IS a proper
+# Starlette-compatible async handler that returns a Response (202 Accepted).
+# Wrapping it in another function that returns None causes:
+#   TypeError: 'NoneType' object is not callable
 web_app = Starlette(
     routes=[
         Route("/sse", endpoint=handle_sse),
-        Route("/messages", endpoint=handle_messages, methods=["POST"]),
+        Route("/messages", endpoint=sse.handle_post_message, methods=["POST"]),
     ]
 )
 
