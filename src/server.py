@@ -68,7 +68,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
     target_session = arguments.get("target_session", "auto")
 
     try:
-        result = analyze_forex_session(pair, target_session)
+        result = await analyze_forex_session(pair, target_session)
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         error_response = {

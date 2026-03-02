@@ -51,7 +51,6 @@ class PatternMatcher:
                 - avg_expansion_pips: float
                 - matched_dates: list of date strings
         """
-        # Calculate current compression ratio
         if avg_pre_range == 0:
             return {
                 "similar_conditions_occurrences": 0,
@@ -61,19 +60,16 @@ class PatternMatcher:
             }
         
         current_ratio = current_pre_range / avg_pre_range
-        
-        # Define target range for "similar" days
         lower_bound = current_ratio - threshold
         upper_bound = current_ratio + threshold
         
-        # Group historical data by date
-        historical_df = historical_df.copy()
-        historical_df['date'] = pd.to_datetime(historical_df.index).date
+        # FIX: always copy before adding columns (pandas 2.x ChainedAssignmentError)
+        df = historical_df.copy()
+        df["date"] = df.index.date  # safe — working on our own copy
         
         matches = []
         
-        for date, day_df in historical_df.groupby('date'):
-            # Calculate pre-session range for this day
+        for date, day_df in df.groupby("date"):
             pre_range = self.range_calc.calculate_pre_session_range(
                 day_df,
                 session_start,
@@ -83,21 +79,16 @@ class PatternMatcher:
             if pre_range == 0:
                 continue
             
-            # Calculate this day's compression ratio
             day_ratio = pre_range / avg_pre_range
             
-            # Check if within similarity threshold
             if lower_bound <= day_ratio <= upper_bound:
-                # Calculate session range for this day
                 session_range = self.range_calc.calculate_session_range(
                     day_df,
                     session_start,
                     session_end
                 )
                 
-                # Determine if expansion occurred
-                # Expansion = session range significantly exceeded pre-session range
-                expansion_multiplier = 1.5  # Session must be 50%+ larger
+                expansion_multiplier = 1.5
                 expanded = session_range > (pre_range * expansion_multiplier)
                 
                 matches.append({
@@ -108,7 +99,6 @@ class PatternMatcher:
                     "expansion_pips": session_range - pre_range
                 })
         
-        # Calculate statistics
         if not matches:
             return {
                 "similar_conditions_occurrences": 0,
@@ -125,7 +115,7 @@ class PatternMatcher:
             "similar_conditions_occurrences": len(matches),
             "expansion_rate": round(expansion_rate, 2),
             "avg_expansion_pips": round(avg_expansion, 1),
-            "matched_dates": [m["date"] for m in matches[-10:]]  # Last 10 for reference
+            "matched_dates": [m["date"] for m in matches[-10:]]
         }
     
     def find_event_day_patterns(
@@ -147,21 +137,25 @@ class PatternMatcher:
         Returns:
             Dict with event-day statistics
         """
-        historical_df = historical_df.copy()
-        historical_df['date'] = historical_df.index.date
+        # FIX: copy before column assignment
+        df = historical_df.copy()
+        df["date"] = df.index.date
         
         event_date_objs = [datetime.strptime(d, "%Y-%m-%d").date() for d in event_dates]
         
         event_ranges = []
+        non_event_ranges = []
         
-        for date, day_df in historical_df.groupby('date'):
+        for date, day_df in df.groupby("date"):
+            session_range = self.range_calc.calculate_session_range(
+                day_df,
+                session_start,
+                session_end
+            )
             if date in event_date_objs:
-                session_range = self.range_calc.calculate_session_range(
-                    day_df,
-                    session_start,
-                    session_end
-                )
                 event_ranges.append(session_range)
+            elif session_range > 0:
+                non_event_ranges.append(session_range)
         
         if not event_ranges:
             return {
@@ -170,21 +164,8 @@ class PatternMatcher:
                 "event_volatility_multiplier": 1.0
             }
         
-        # Compare to non-event days
-        non_event_ranges = []
-        for date, day_df in historical_df.groupby('date'):
-            if date not in event_date_objs:
-                session_range = self.range_calc.calculate_session_range(
-                    day_df,
-                    session_start,
-                    session_end
-                )
-                if session_range > 0:
-                    non_event_ranges.append(session_range)
-        
         avg_event = np.mean(event_ranges)
         avg_non_event = np.mean(non_event_ranges) if non_event_ranges else avg_event
-        
         multiplier = avg_event / avg_non_event if avg_non_event > 0 else 1.0
         
         return {
@@ -210,13 +191,14 @@ class PatternMatcher:
         Returns:
             Dict with directional statistics
         """
-        historical_df = historical_df.copy()
-        historical_df['date'] = historical_df.index.date
+        # FIX: copy before column assignment
+        df = historical_df.copy()
+        df["date"] = df.index.date
         
         bullish_days = 0
         bearish_days = 0
         
-        for date, day_df in historical_df.groupby('date'):
+        for date, day_df in df.groupby("date"):
             session_df = self.range_calc._filter_session(
                 day_df,
                 session_start,
@@ -226,8 +208,8 @@ class PatternMatcher:
             if session_df.empty:
                 continue
             
-            open_price = session_df['open'].iloc[0]
-            close_price = session_df['close'].iloc[-1]
+            open_price = session_df["open"].iloc[0]
+            close_price = session_df["close"].iloc[-1]
             
             if close_price > open_price:
                 bullish_days += 1
@@ -246,7 +228,6 @@ class PatternMatcher:
         bullish_pct = (bullish_days / total_days) * 100
         bearish_pct = (bearish_days / total_days) * 100
         
-        # Determine bias (needs >60% to be considered directional)
         if bullish_pct > 60:
             bias = "bullish"
         elif bearish_pct > 60:

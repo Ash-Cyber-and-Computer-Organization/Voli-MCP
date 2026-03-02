@@ -61,9 +61,7 @@ class RangeCalculator:
         Returns:
             Pre-session range in pips
         """
-        # Filter to pre-session window
         pre_session_df = self._filter_pre_session(df, session_start_time, minutes_before)
-        
         return self.calculate_range_pips(pre_session_df)
     
     def calculate_session_range(
@@ -106,11 +104,13 @@ class RangeCalculator:
             Average range in pips
         """
         daily_ranges = []
+
+        # FIX: always work on a copy to avoid pandas 2.x ChainedAssignmentError
+        df = historical_df.copy()
+        # Use .date on the DatetimeIndex directly (works for both tz-aware and naive)
+        df["date"] = df.index.date
         
-        # Group by date
-        historical_df['date'] = historical_df.index.date
-        
-        for date, day_df in historical_df.groupby('date'):
+        for date, day_df in df.groupby("date"):
             if is_pre_session:
                 range_pips = self.calculate_pre_session_range(
                     day_df,
@@ -119,7 +119,6 @@ class RangeCalculator:
                 )
             else:
                 # For session range, need session_end_time
-                # Calculate from window duration
                 dummy_dt = datetime.combine(datetime.today(), session_start_time)
                 session_end = (dummy_dt + timedelta(minutes=minutes_window)).time()
                 range_pips = self.calculate_session_range(
@@ -152,9 +151,6 @@ class RangeCalculator:
             
         Returns:
             Tuple of (is_compressed: bool, compression_ratio: float)
-            
-        Example:
-            (True, 0.56) means range is 56% of average (compressed)
         """
         if avg_range == 0:
             return False, 1.0
@@ -182,28 +178,16 @@ class RangeCalculator:
             
         Returns:
             Expected deviation in pips
-            
-        Logic:
-            - If compressed, expect expansion proportional to expansion_rate
-            - If not compressed, expect normal session range
-            - Blend the two based on compression severity
         """
         is_compressed, ratio = self.detect_compression(current_pre_range, avg_pre_range)
         
         if is_compressed:
-            # Calculate compression delta
             compression_amount = avg_pre_range - current_pre_range
-            
-            # Expected expansion is proportional to historical rate
             expected_expansion = compression_amount * historical_expansion_rate * 1.5
-            
-            # Base expectation on average session range + expansion
             expected = avg_session_range + expected_expansion
         else:
-            # Not compressed, expect normal volatility
             expected = avg_session_range
         
-        # Ensure minimum expected deviation
         return max(expected, 10.0)  # At least 10 pips
     
     def _filter_pre_session(
@@ -223,30 +207,23 @@ class RangeCalculator:
         Returns:
             Filtered DataFrame
         """
-        # Get all unique dates in the data
+        # FIX: work on a copy; extract dates without mutating
         df_copy = df.copy()
-        df_copy['date'] = df_copy.index.date
-        dates = df_copy['date'].unique()
+        dates = df_copy.index.date  # numpy array, no column assignment needed
         
-        # For the most recent date, calculate window
         if len(dates) == 0:
             return pd.DataFrame()
         
         recent_date = dates[-1]
         
-        # Create datetime for session start on that date
-        session_start_dt = datetime.combine(
-            recent_date,
-            session_start
-        )
+        session_start_dt = datetime.combine(recent_date, session_start)
         
-        # Ensure timezone awareness
+        # Preserve timezone awareness
         if df.index.tz is not None:
             session_start_dt = session_start_dt.replace(tzinfo=df.index.tz)
         
         window_start_dt = session_start_dt - timedelta(minutes=minutes_before)
         
-        # Filter
         mask = (df.index >= window_start_dt) & (df.index < session_start_dt)
         return df[mask]
     
@@ -267,15 +244,13 @@ class RangeCalculator:
         Returns:
             Filtered DataFrame
         """
-        # Extract time component from index
-        df_copy = df.copy()
-        df_copy['time'] = df_copy.index.time
+        # Extract time component without mutating df
+        times = df.index.time
         
-        # Handle sessions that cross midnight
         if session_start < session_end:
-            mask = (df_copy['time'] >= session_start) & (df_copy['time'] < session_end)
-        else:
-            mask = (df_copy['time'] >= session_start) | (df_copy['time'] < session_end)
+            mask = (times >= session_start) & (times < session_end)
+        else:  # Crosses midnight
+            mask = (times >= session_start) | (times < session_end)
         
         return df[mask]
     
@@ -293,17 +268,13 @@ class RangeCalculator:
         if len(df) < period:
             return 0.0
         
-        # Calculate True Range
         df = df.copy()
-        df['h-l'] = df['high'] - df['low']
-        df['h-pc'] = abs(df['high'] - df['close'].shift(1))
-        df['l-pc'] = abs(df['low'] - df['close'].shift(1))
+        df["h-l"] = df["high"] - df["low"]
+        df["h-pc"] = abs(df["high"] - df["close"].shift(1))
+        df["l-pc"] = abs(df["low"] - df["close"].shift(1))
+        df["tr"] = df[["h-l", "h-pc", "l-pc"]].max(axis=1)
         
-        df['tr'] = df[['h-l', 'h-pc', 'l-pc']].max(axis=1)
-        
-        # Calculate ATR
-        atr = df['tr'].rolling(window=period).mean().iloc[-1]
-        
+        atr = df["tr"].rolling(window=period).mean().iloc[-1]
         return price_to_pips(atr, self.pair)
     
     def get_range_statistics(
@@ -337,7 +308,7 @@ class RangeCalculator:
         """Calculate average candle range in pips."""
         if df.empty:
             return 0.0
-        candle_ranges = df['high'] - df['low']
+        candle_ranges = df["high"] - df["low"]
         avg = candle_ranges.mean()
         return price_to_pips(avg, self.pair)
     
@@ -345,6 +316,6 @@ class RangeCalculator:
         """Calculate maximum candle range in pips."""
         if df.empty:
             return 0.0
-        candle_ranges = df['high'] - df['low']
+        candle_ranges = df["high"] - df["low"]
         max_range = candle_ranges.max()
         return price_to_pips(max_range, self.pair)

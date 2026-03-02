@@ -38,7 +38,7 @@ class SessionAnalyzer:
         self.calendar_client = get_calendar_client()
         self.confidence_scorer = ConfidenceScorer()
     
-    def analyze_forex_session(
+    async def analyze_forex_session(
         self,
         pair: str,
         target_session: str = "auto"
@@ -56,7 +56,6 @@ class SessionAnalyzer:
         Raises:
             ValueError: If pair is invalid or session not recognized
         """
-        # Validate inputs
         if not validate_pair(pair):
             raise ValueError(
                 f"Unsupported pair: {pair}. "
@@ -66,7 +65,6 @@ class SessionAnalyzer:
         normalized_pair = normalize_pair_format(pair)
         display_pair = display_pair_format(normalized_pair)
         
-        # Check if market is open
         if is_weekend():
             return self._weekend_response(display_pair)
         
@@ -88,23 +86,22 @@ class SessionAnalyzer:
         session_info = get_session_info(session_key)
         session_name = session_info["name"]
         
-        # Initialize analyzers
         range_calc = RangeCalculator(normalized_pair)
         pattern_matcher = PatternMatcher(normalized_pair)
         
-        # Step 1: Fetch current intraday data (last 2-3 hours for pre-session analysis)
+        # Step 1: Fetch current intraday data (async — non-blocking)
         try:
-            intraday_df = self.data_client.get_intraday_data(
+            intraday_df = await self.data_client.get_intraday_data(
                 normalized_pair,
                 interval="5min",
-                outputsize=100  # ~8 hours of 5-min candles
+                outputsize=100
             )
         except Exception as e:
             raise Exception(f"Failed to fetch intraday data: {str(e)}")
 
-        # Step 2: Fetch historical data for pattern matching
+        # Step 2: Fetch historical data for pattern matching (async — non-blocking)
         try:
-            historical_df = self.data_client.get_historical_sessions(
+            historical_df = await self.data_client.get_historical_sessions(
                 normalized_pair,
                 days_back=60,
                 interval="5min"
@@ -112,10 +109,10 @@ class SessionAnalyzer:
         except Exception as e:
             raise Exception(f"Failed to fetch historical data: {str(e)}")
         
-        # Step 3: Calculate pre-session range
         session_start = session_info["start"]
         session_end = session_info["end"]
         
+        # Step 3: Calculate pre-session range
         current_pre_range = range_calc.calculate_pre_session_range(
             intraday_df,
             session_start,
@@ -165,12 +162,9 @@ class SessionAnalyzer:
                 session_start_dt,
                 window_minutes=120
             )
-            has_event = nearby_event is not None
         except Exception as e:
-            # Calendar unavailable, continue without event data
             print(f"Calendar check skipped: {e}")
             nearby_event = None
-            has_event = False
         
         has_event = nearby_event is not None
         
@@ -187,7 +181,7 @@ class SessionAnalyzer:
             occurrences=pattern_results["similar_conditions_occurrences"],
             expansion_rate=pattern_results["expansion_rate"],
             has_event=has_event,
-            data_age_days=30  # We're using 30-60 day data
+            data_age_days=30
         )
         
         # Step 11: Generate market drivers
@@ -240,26 +234,12 @@ class SessionAnalyzer:
         event: Optional[Dict],
         pattern_results: Dict
     ) -> list[str]:
-        """
-        Generate list of market drivers explaining the analysis.
-        
-        Args:
-            current_pre_range: Current pre-session range
-            avg_pre_range: Average pre-session range
-            compression_ratio: Compression ratio
-            is_compressed: Whether range is compressed
-            event: Economic event if present
-            pattern_results: Pattern matching results
-            
-        Returns:
-            List of driver strings
-        """
+        """Generate list of market drivers explaining the analysis."""
         drivers = []
         
-        # Driver 1: Pre-session range status
         if is_compressed:
             drivers.append(
-                f"Asian session range compressed ({current_pre_range:.0f} pips vs "
+                f"Pre-session range compressed ({current_pre_range:.0f} pips vs "
                 f"30-day avg of {avg_pre_range:.0f} pips)"
             )
         else:
@@ -268,12 +248,10 @@ class SessionAnalyzer:
                 f"({compression_ratio:.0%} of 30-day avg)"
             )
         
-        # Driver 2: Economic event if present
         if event:
             event_desc = self.calendar_client.format_event_for_driver(event)
             drivers.append(event_desc)
         
-        # Driver 3: Historical pattern context
         expansion_rate = pattern_results["expansion_rate"]
         occurrences = pattern_results["similar_conditions_occurrences"]
         
@@ -296,69 +274,32 @@ class SessionAnalyzer:
         return drivers
     
     def _get_session_duration(self, start: Any, end: Any) -> int:
-        """
-        Calculate session duration in minutes.
-        
-        Args:
-            start: Session start time
-            end: Session end time
-            
-        Returns:
-            Duration in minutes
-        """
+        """Calculate session duration in minutes."""
         from datetime import datetime, time
-        
-        # Convert to datetime for arithmetic
         dummy_date = datetime(2000, 1, 1)
         start_dt = datetime.combine(dummy_date, start)
         end_dt = datetime.combine(dummy_date, end)
-        
-        # Handle overnight sessions
         if end_dt < start_dt:
             end_dt += timedelta(days=1)
-        
-        duration = (end_dt - start_dt).total_seconds() / 60
-        return int(duration)
+        return int((end_dt - start_dt).total_seconds() / 60)
     
     def _get_next_session_datetime(self, session_key: str) -> datetime:
-        """
-        Get datetime for next occurrence of session.
-        
-        Args:
-            session_key: Session identifier
-            
-        Returns:
-            Datetime of next session start
-        """
+        """Get datetime for next occurrence of session."""
         now = datetime.now(pytz.UTC)
         today = now.date()
-        
         session_info = get_session_info(session_key)
         session_start = session_info["start"]
-        
-        # Try today
         session_dt = datetime.combine(today, session_start, tzinfo=pytz.UTC)
-        
-        # If already passed, use tomorrow
         if session_dt < now:
             session_dt = datetime.combine(
                 today + timedelta(days=1),
                 session_start,
                 tzinfo=pytz.UTC
             )
-        
         return session_dt
     
     def _weekend_response(self, pair: str) -> Dict[str, Any]:
-        """
-        Generate response for weekend closure.
-        
-        Args:
-            pair: Currency pair
-            
-        Returns:
-            Weekend closure message
-        """
+        """Generate response for weekend closure."""
         return {
             "pair": pair,
             "session": "Market Closed",
@@ -378,8 +319,8 @@ class SessionAnalyzer:
         }
 
 
-# Main analysis function for MCP tool
-def analyze_forex_session(pair: str, target_session: str = "auto") -> Dict[str, Any]:
+# Module-level async entry point for MCP tool
+async def analyze_forex_session(pair: str, target_session: str = "auto") -> Dict[str, Any]:
     """
     MCP tool entry point for forex session analysis.
     
@@ -389,9 +330,6 @@ def analyze_forex_session(pair: str, target_session: str = "auto") -> Dict[str, 
         
     Returns:
         Analysis output in required JSON format
-        
-    Example:
-        result = analyze_forex_session("EUR/USD", "london")
     """
     analyzer = SessionAnalyzer()
-    return analyzer.analyze_forex_session(pair, target_session)
+    return await analyzer.analyze_forex_session(pair, target_session)
