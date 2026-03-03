@@ -52,12 +52,62 @@ async def list_tools() -> list[Tool]:
                     }
                 },
                 "required": ["pair"]
+            },
+            outputSchema={
+                "type": "object",
+                "properties": {
+                    "pair": {"type": "string", "description": "Currency pair analyzed, e.g. EUR/USD"},
+                    "session": {"type": "string", "description": "Session name, e.g. 'London Session' or 'Market Closed'"},
+                    "time_window_minutes": {"type": "integer", "description": "Minutes analyzed in the pre-session window"},
+                    "volatility_expectation": {
+                        "type": "string",
+                        "enum": ["Low", "Medium", "High", "None"],
+                        "description": "Expected volatility level for the session"
+                    },
+                    "expected_deviation_pips": {"type": "number", "description": "Projected pip movement for the session"},
+                    "confidence": {"type": "number", "description": "Confidence score from 0.0 to 1.0"},
+                    "drivers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of market drivers explaining the analysis"
+                    },
+                    "historical_context": {
+                        "type": "object",
+                        "properties": {
+                            "similar_conditions_occurrences": {"type": "integer"},
+                            "expansion_rate": {"type": "number"}
+                        },
+                        "required": ["similar_conditions_occurrences", "expansion_rate"]
+                    },
+                    "agent_guidance": {"type": "string", "description": "Plain-English trading guidance for the agent"}
+                },
+                "required": [
+                    "pair", "session", "time_window_minutes", "volatility_expectation",
+                    "expected_deviation_pips", "confidence", "drivers",
+                    "historical_context", "agent_guidance"
+                ]
+            },
+            # Context Protocol marketplace metadata (SDK field: `meta`, serialized as `_meta`)
+            meta={
+                "surface": "answer",
+                "queryEligible": True,
+                "latencyClass": "fast",
+                "pricing": {
+                    "queryUsd": "0.005"
+                },
+                "rateLimit": {
+                    "maxRequestsPerMinute": 20,
+                    "maxConcurrency": 5,
+                    "cooldownMs": 500,
+                    "supportsBulk": False,
+                    "notes": "Rate limited by upstream Twelve Data API plan"
+                }
             }
         )
     ]
 
 @app.call_tool()
-async def call_tool(name: str, arguments: Any) -> list[TextContent]:
+async def call_tool(name: str, arguments: Any):
     if name != "analyze_forex_session":
         raise ValueError(f"Unknown tool: {name}")
 
@@ -69,7 +119,12 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
     try:
         result = await analyze_forex_session(pair, target_session)
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        # Return both TextContent (for legacy clients) and structuredContent
+        # structuredContent is required by the Context Protocol for query-eligible tools
+        return {
+            "content": [TextContent(type="text", text=json.dumps(result, indent=2))],
+            "structuredContent": result,
+        }
     except Exception as e:
         error_response = {
             "success": False,
@@ -77,7 +132,10 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             "pair": pair,
             "target_session": target_session
         }
-        return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+        return {
+            "content": [TextContent(type="text", text=json.dumps(error_response, indent=2))],
+            "structuredContent": error_response,
+        }
 
 
 # SSE transport
