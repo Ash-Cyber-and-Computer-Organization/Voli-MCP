@@ -87,20 +87,22 @@ async def list_tools() -> list[Tool]:
                     "historical_context", "agent_guidance"
                 ]
             },
-            # Context Protocol marketplace metadata (SDK field: `meta`, serialized as `_meta`)
-            meta={
-                "surface": "answer",
-                "queryEligible": True,
-                "latencyClass": "fast",
-                "pricing": {
-                    "queryUsd": "0.005"
-                },
-                "rateLimit": {
-                    "maxRequestsPerMinute": 20,
-                    "maxConcurrency": 5,
-                    "cooldownMs": 500,
-                    "supportsBulk": False,
-                    "notes": "Rate limited by upstream Twelve Data API plan"
+            # Context Protocol marketplace metadata (passed as extra fields via kwargs)
+            **{
+                "_meta": {
+                    "surface": "answer",
+                    "queryEligible": True,
+                    "latencyClass": "fast",
+                    "pricing": {
+                        "queryUsd": "0.005"
+                    },
+                    "rateLimit": {
+                        "maxRequestsPerMinute": 20,
+                        "maxConcurrency": 5,
+                        "cooldownMs": 500,
+                        "supportsBulk": False,
+                        "notes": "Rate limited by upstream Twelve Data API plan"
+                    }
                 }
             }
         )
