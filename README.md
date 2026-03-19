@@ -8,14 +8,13 @@ _A MCP (Model Context Protocol) server that provides real-time forex session vol
 [![MCP](https://img.shields.io/badge/MCP-1.0+-orange.svg)](https://modelcontextprotocol.io/)
 
 </p>
-
+<!-- 
 ## CRACKED DEVS BEHIND THIS
-
 <p align="center">
   <img src="https://img.shields.io/badge/CONTRACTOR-X-blue?style=for-the-badge" />
   <img src="https://img.shields.io/badge/MOH-DAKAI-green?style=for-the-badge" />
 </p>
-
+-->
 ##  Table of Contents
 
 - [Overview](#overview)
@@ -158,11 +157,6 @@ REQUEST_DELAY_SECONDS=1
 LOG_LEVEL=INFO
 ```
 
-### API Key Setup
-
-1. Visit [Twelve Data](https://twelvedata.com/) and sign up for a free account
-2. Get your API key from the dashboard
-3. Add it to your `.env` file
 
 ### Rate Limiting
 
@@ -426,10 +420,6 @@ Tests use a combination of:
 - Mock data for offline testing
 - Historical test scenarios
 
-##  Contributing
-
-We welcome contributions! Please follow these steps:
-
 ### Development Setup
 
 1. Fork the repository
@@ -448,7 +438,7 @@ We welcome contributions! Please follow these steps:
 - Write comprehensive docstrings
 - Add unit tests for new functionality
 - Update documentation as needed
-
+<!---
 ### Pull Request Process
 
 1. Update the `PULL_REQUEST.md` template with your changes
@@ -459,19 +449,16 @@ We welcome contributions! Please follow these steps:
 ##  License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+-->
 ##  Acknowledgments
 
-- [Twelve Data](https://twelvedata.com/) for market data API
-- [Model Context Protocol](https://modelcontextprotocol.io/) for the protocol specification
-- [Anthropic](https://www.anthropic.com/) for Claude Desktop integration
+- ctxprotocol
 
 ##  Support
 
-- **Issues**: [GitHub Issues](https://github.com/Ash-Cyber-and-Computer-Organization/Voli-MCP/issues)
+- **Issues**: [GitHub Issues](https://github.com/Contractor-x/Voli-MCP/issues)
 <!--- **Discussions**: [GitHub Discussions](https://github.com/your-username/voli-mcp/discussions) -->
 - **Documentation**: See `docs/` directory for detailed guides
 
 ---
 
-**Happy Trading!**
