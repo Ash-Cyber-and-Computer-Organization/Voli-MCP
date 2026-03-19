@@ -4,6 +4,9 @@ Orchestrates all components to produce final output.
 """
 
 from typing import Dict, Any, List, Optional
+from datetime import datetime
+
+import pytz
 
 from utils.sessions import (
     get_current_session,
@@ -153,6 +156,8 @@ class SessionAnalyzer:
 
         has_event = len(events) > 0
         event_type = events[0].get("event_type") if events else None
+        macro_events = self._build_macro_events(events)
+        primary_macro_event = macro_events[0] if macro_events else None
 
         # Step 8: Find similar historical patterns from store
         pattern_results = pattern_matcher.find_similar_conditions(
@@ -217,6 +222,8 @@ class SessionAnalyzer:
                 "similar_conditions_occurrences": pattern_results["similar_conditions_occurrences"],
                 "expansion_rate": pattern_results["expansion_rate"]
             },
+            macro_events=macro_events,
+            primary_macro_event=primary_macro_event,
             volatility_level=volatility_level,
             agent_guidance=agent_guidance
         )
@@ -290,8 +297,44 @@ class SessionAnalyzer:
                 "similar_conditions_occurrences": 0,
                 "expansion_rate": 0
             },
+            "macro_events": [],
+            "primary_macro_event": None,
             "agent_guidance": "Wait for market open. Review weekly levels and news during closure."
         }
+
+    def _build_macro_events(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        structured_events: List[Dict[str, Any]] = []
+        now = self.calendar_client.now_utc()
+
+        for event in events:
+            event_name = event.get("event")
+            event_type = event.get("event_type")
+            event_datetime = event.get("datetime")
+            if not event_name or not event_datetime:
+                continue
+
+            try:
+                event_dt = datetime.fromisoformat(event_datetime)
+                if event_dt.tzinfo is None:
+                    event_dt = event_dt.replace(tzinfo=pytz.UTC)
+                minutes_until = int((event_dt - now).total_seconds() / 60)
+            except Exception:
+                minutes_until = None
+
+            structured_events.append(
+                {
+                    "name": event_name,
+                    "event_type": event_type,
+                    "currency": event.get("currency"),
+                    "country": event.get("country"),
+                    "impact": event.get("impact", "high"),
+                    "datetime": event_datetime,
+                    "minutes_until": minutes_until,
+                    "source": event.get("source"),
+                }
+            )
+
+        return structured_events
 
 
 async def analyze_forex_session(pair: str, target_session: str = "auto") -> Dict[str, Any]:

@@ -41,7 +41,7 @@ VOLI-MCP (Volatility Analysis for Forex Sessions) is an MCP server designed to a
 - **Confidence scoring** based on historical accuracy
 - **Agent-specific trading guidance** tailored to different trading styles
 
-The server exposes a single MCP tool `analyze_forex_session` that accepts a currency pair and target session, returning comprehensive analysis including expected deviation, confidence levels, market drivers, and trading recommendations.
+The server exposes a single MCP tool `analyze_forex_session` that accepts a currency pair and target session, returning comprehensive analysis including expected deviation, confidence levels, market drivers, named macro events, and trading recommendations.
 
 ##  Key Features
 
@@ -252,12 +252,34 @@ Analyzes forex session volatility and generates trading guidance.
   "confidence": 0.78,
   "drivers": [
     "Pre-session range compressed (18.7 pips vs 30-day avg of 26.4 pips)",
-    "No major economic events in next 2 hours",
+    "ECB Rate Decision scheduled at 12:45 UTC (High impact)",
     "Historical data shows mixed outcomes for similar conditions (23 comparable days)"
   ],
   "historical_context": {
     "similar_conditions_occurrences": 23,
     "expansion_rate": 0.52
+  },
+  "macro_events": [
+    {
+      "name": "ECB Rate Decision",
+      "event_type": "ECB",
+      "currency": "EUR",
+      "country": "EUR",
+      "impact": "high",
+      "datetime": "2026-03-18T12:45:00+00:00",
+      "minutes_until": 45,
+      "source": "forexfactory"
+    }
+  ],
+  "primary_macro_event": {
+    "name": "ECB Rate Decision",
+    "event_type": "ECB",
+    "currency": "EUR",
+    "country": "EUR",
+    "impact": "high",
+    "datetime": "2026-03-18T12:45:00+00:00",
+    "minutes_until": 45,
+    "source": "forexfactory"
   },
   "agent_guidance": "Monitor for breakout above/below pre-session high/low. Consider reducing position sizes due to moderate confidence."
 }

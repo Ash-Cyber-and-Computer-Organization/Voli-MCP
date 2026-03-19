@@ -12,12 +12,13 @@ from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import random
+from contextlib import contextmanager
 
 import pytz
 import pandas as pd
 
 from utils.sessions import SESSIONS
-from utils.formatters import normalize_pair_format
+from utils.formatters import ALL_PAIRS, normalize_pair_format
 
 
 @dataclass
@@ -48,8 +49,17 @@ class HistoricalStore:
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
 
+    @contextmanager
+    def _connection(self):
+        conn = self._connect()
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
     def _ensure_schema(self) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS session_ranges (
@@ -68,26 +78,20 @@ class HistoricalStore:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_ranges_event ON session_ranges(event_type)")
 
     def _ensure_seeded(self) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             cur = conn.execute("SELECT COUNT(1) FROM session_ranges")
             count = cur.fetchone()[0]
-        if count > 0:
+        if count == 0:
+            self._seed_synthetic_history()
             return
-        self._seed_synthetic_history()
+        self._ensure_supported_pairs_seeded()
 
     def _seed_synthetic_history(self) -> None:
         """Generate synthetic 2-year session ranges for major pairs."""
-        pairs = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"]
+        pairs = [normalize_pair_format(pair) for pair in ALL_PAIRS]
         end_date = datetime.now(pytz.UTC).date()
         start_date = end_date - timedelta(days=730)
 
-        base_daily = {
-            "EURUSD": 70,
-            "GBPUSD": 85,
-            "USDJPY": 90,
-            "AUDUSD": 65,
-            "USDCAD": 60
-        }
         session_weights = {
             "asian": 0.28,
             "london": 0.45,
@@ -106,7 +110,7 @@ class HistoricalStore:
             events = self._fallback_events_for_date(day)
 
             for pair in pairs:
-                daily_base = base_daily.get(pair, 70)
+                daily_base = self._estimate_daily_base(pair)
                 day_multiplier = rng.uniform(0.7, 1.35)
                 daily_range = daily_base * day_multiplier
 
@@ -159,7 +163,7 @@ class HistoricalStore:
                 avg_pre = sum(window) / len(window) if window else rec.pre_range_pips
                 rec.compression_ratio = round(rec.pre_range_pips / avg_pre, 2) if avg_pre > 0 else 1.0
 
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.executemany(
                 """
                 INSERT INTO session_ranges
@@ -180,6 +184,148 @@ class HistoricalStore:
                     for r in records
                 ]
             )
+
+    def _ensure_supported_pairs_seeded(self) -> None:
+        """Backfill synthetic history for supported pairs missing from an existing DB."""
+        pairs = [normalize_pair_format(pair) for pair in ALL_PAIRS]
+        with self._connection() as conn:
+            cur = conn.execute("SELECT DISTINCT pair FROM session_ranges")
+            existing_pairs = {row[0] for row in cur.fetchall()}
+
+        missing_pairs = [pair for pair in pairs if pair not in existing_pairs]
+        if not missing_pairs:
+            return
+
+        self._seed_synthetic_history_for_pairs(missing_pairs)
+
+    def _seed_synthetic_history_for_pairs(self, pairs: List[str]) -> None:
+        end_date = datetime.now(pytz.UTC).date()
+        start_date = end_date - timedelta(days=730)
+        session_weights = {
+            "asian": 0.28,
+            "london": 0.45,
+            "ny": 0.37
+        }
+        rng = random.Random(42)
+        records: List[SessionRangeRecord] = []
+        day = start_date
+
+        while day <= end_date:
+            if day.weekday() >= 5:
+                day += timedelta(days=1)
+                continue
+
+            events = self._fallback_events_for_date(day)
+
+            for pair in pairs:
+                daily_base = self._estimate_daily_base(pair)
+                day_multiplier = rng.uniform(0.7, 1.35)
+                daily_range = daily_base * day_multiplier
+
+                for session_key in SESSIONS.keys():
+                    pre_range = daily_range * session_weights[session_key] * rng.uniform(0.35, 0.55)
+                    if rng.random() < 0.65:
+                        session_range = pre_range * rng.uniform(1.55, 2.0)
+                    else:
+                        session_range = pre_range * rng.uniform(1.1, 1.45)
+
+                    event_type = None
+                    has_event = 0
+                    for ev in events:
+                        if session_key == ev["session"] and ev["currency"] in {pair[:3], pair[3:]}:
+                            event_type = ev["event_type"]
+                            has_event = 1
+                            if rng.random() < 0.55:
+                                session_range = pre_range * rng.uniform(1.5, 1.9)
+                            else:
+                                session_range = pre_range * rng.uniform(1.1, 1.4)
+                            break
+
+                    records.append(
+                        SessionRangeRecord(
+                            date=day.isoformat(),
+                            pair=pair,
+                            session=session_key,
+                            pre_range_pips=round(pre_range, 1),
+                            session_range_pips=round(session_range, 1),
+                            compression_ratio=0.0,
+                            has_event=has_event,
+                            event_type=event_type
+                        )
+                    )
+            day += timedelta(days=1)
+
+        self._insert_seed_records(records)
+
+    def _insert_seed_records(self, records: List[SessionRangeRecord]) -> None:
+        keyed: Dict[Tuple[str, str], List[SessionRangeRecord]] = {}
+        for rec in records:
+            keyed.setdefault((rec.pair, rec.session), []).append(rec)
+
+        for rows in keyed.values():
+            rows.sort(key=lambda r: r.date)
+            window: List[float] = []
+            for rec in rows:
+                window.append(rec.pre_range_pips)
+                if len(window) > 30:
+                    window.pop(0)
+                avg_pre = sum(window) / len(window) if window else rec.pre_range_pips
+                rec.compression_ratio = round(rec.pre_range_pips / avg_pre, 2) if avg_pre > 0 else 1.0
+
+        with self._connection() as conn:
+            conn.executemany(
+                """
+                INSERT INTO session_ranges
+                (date, pair, session, pre_range_pips, session_range_pips, compression_ratio, has_event, event_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        r.date,
+                        r.pair,
+                        r.session,
+                        r.pre_range_pips,
+                        r.session_range_pips,
+                        r.compression_ratio,
+                        r.has_event,
+                        r.event_type
+                    )
+                    for r in records
+                ]
+            )
+
+    def _estimate_daily_base(self, pair: str) -> float:
+        """Estimate a plausible baseline daily pip range for supported pairs."""
+        pair = normalize_pair_format(pair)
+        direct_map = {
+            "EURUSD": 70,
+            "GBPUSD": 85,
+            "USDJPY": 90,
+            "AUDUSD": 65,
+            "USDCAD": 60,
+            "NZDUSD": 62,
+            "USDCHF": 68,
+        }
+        if pair in direct_map:
+            return direct_map[pair]
+
+        currency_weights = {
+            "EUR": 34,
+            "GBP": 42,
+            "USD": 30,
+            "JPY": 48,
+            "AUD": 28,
+            "CAD": 24,
+            "NZD": 26,
+            "CHF": 24,
+            "SGD": 20,
+            "HKD": 14,
+            "ZAR": 58,
+            "MXN": 62,
+            "TRY": 72,
+        }
+        base = currency_weights.get(pair[:3], 30) + currency_weights.get(pair[3:], 30)
+        return float(max(45, min(base, 140)))
 
     def _fallback_events_for_date(self, day) -> List[Dict[str, str]]:
         """Simple recurring event schedule for synthetic data."""
@@ -211,7 +357,7 @@ class HistoricalStore:
 
     def get_recent_averages(self, pair: str, session: str, days: int = 30) -> Dict[str, float]:
         normalized = normalize_pair_format(pair)
-        with self._connect() as conn:
+        with self._connection() as conn:
             cur = conn.execute(
                 """
                 SELECT pre_range_pips, session_range_pips
@@ -240,7 +386,7 @@ class HistoricalStore:
 
     def get_history_df(self, pair: str, session: str) -> pd.DataFrame:
         normalized = normalize_pair_format(pair)
-        with self._connect() as conn:
+        with self._connection() as conn:
             df = pd.read_sql_query(
                 """
                 SELECT date, pre_range_pips, session_range_pips,
@@ -275,7 +421,7 @@ class HistoricalStore:
         min_ratio = compression_ratio * (1 - tolerance)
         max_ratio = compression_ratio * (1 + tolerance)
 
-        with self._connect() as conn:
+        with self._connection() as conn:
             if event_type == "ANY":
                 cur = conn.execute(
                     """
@@ -327,7 +473,7 @@ class HistoricalStore:
 
     def get_latest_pre_range(self, pair: str, session: str) -> Optional[float]:
         normalized = normalize_pair_format(pair)
-        with self._connect() as conn:
+        with self._connection() as conn:
             cur = conn.execute(
                 """
                 SELECT pre_range_pips

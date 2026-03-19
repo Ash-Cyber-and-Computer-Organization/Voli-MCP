@@ -31,7 +31,8 @@ async def list_tools() -> list[Tool]:
                 "time_window_minutes (integer), volatility_expectation (Low/Medium/High/None), "
                 "expected_deviation_pips (number), confidence (0-1 number), "
                 "drivers (array of strings), historical_context (object with "
-                "similar_conditions_occurrences and expansion_rate), and agent_guidance (string). "
+                "similar_conditions_occurrences and expansion_rate), macro_events (array of named events), "
+                "primary_macro_event (nearest named event or null), and agent_guidance (string). "
                 "On weekends, returns session='Market Closed' with volatility_expectation='None'. "
                 "Supported pairs: EUR/USD, GBP/USD, USD/JPY, USD/CHF, AUD/USD, USD/CAD, NZD/USD, "
                 "EUR/GBP, EUR/JPY, GBP/JPY and other major/minor pairs."
@@ -79,12 +80,44 @@ async def list_tools() -> list[Tool]:
                         },
                         "required": ["similar_conditions_occurrences", "expansion_rate"]
                     },
+                    "macro_events": {
+                        "type": "array",
+                        "description": "Named high-impact macro events relevant to the pair within the analysis window",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "event_type": {"type": ["string", "null"]},
+                                "currency": {"type": ["string", "null"]},
+                                "country": {"type": ["string", "null"]},
+                                "impact": {"type": ["string", "null"]},
+                                "datetime": {"type": "string"},
+                                "minutes_until": {"type": ["integer", "null"]},
+                                "source": {"type": ["string", "null"]}
+                            },
+                            "required": ["name", "datetime"]
+                        }
+                    },
+                    "primary_macro_event": {
+                        "type": ["object", "null"],
+                        "description": "Nearest named high-impact macro event, if any",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "event_type": {"type": ["string", "null"]},
+                            "currency": {"type": ["string", "null"]},
+                            "country": {"type": ["string", "null"]},
+                            "impact": {"type": ["string", "null"]},
+                            "datetime": {"type": "string"},
+                            "minutes_until": {"type": ["integer", "null"]},
+                            "source": {"type": ["string", "null"]}
+                        }
+                    },
                     "agent_guidance": {"type": "string", "description": "Plain-English trading guidance for the agent"}
                 },
                 "required": [
                     "pair", "session", "time_window_minutes", "volatility_expectation",
                     "expected_deviation_pips", "confidence", "drivers",
-                    "historical_context", "agent_guidance"
+                    "historical_context", "macro_events", "primary_macro_event", "agent_guidance"
                 ]
             },
             # Context Protocol marketplace metadata (passed as extra fields via kwargs)

@@ -244,6 +244,8 @@ def format_session_output(
     confidence: float,
     drivers: List[str],
     historical_context: Dict[str, Any],
+    macro_events: Optional[List[Dict[str, Any]]] = None,
+    primary_macro_event: Optional[Dict[str, Any]] = None,
     volatility_level: Optional[str] = None,
     agent_guidance: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -292,6 +294,8 @@ def format_session_output(
             "similar_conditions_occurrences": historical_context.get("similar_conditions_occurrences", 0),
             "expansion_rate": round(historical_context.get("expansion_rate", 0.0), 2)
         },
+        "macro_events": macro_events or [],
+        "primary_macro_event": primary_macro_event,
         "agent_guidance": agent_guidance
     }
 
