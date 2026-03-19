@@ -1,0 +1,24 @@
+Analyze forex session volatility for major and minor currency pairs using pre-session range context, historical pattern matching, and nearby macro events.
+
+Features:
+- Analyzes Asian, London, New York, or auto-detected sessions for supported forex pairs
+- Forecasts expected deviation in pips and labels volatility as Low, Medium, High, or None
+- Uses historical similarity and expansion-rate context to estimate confidence from 0.0 to 1.0
+- Returns market drivers, named macro events, and a primary macro event when one is relevant
+- Generates agent-ready guidance for session planning, breakout monitoring, and risk-aware trade preparation
+- Handles weekend market closures explicitly by returning Market Closed with None volatility
+
+Try asking:
+- Analyze EUR/USD for the next forex session and summarize expected deviation, confidence, and key drivers.
+- Which sessions can this server analyze for GBP/USD, and what happens if I leave target_session as auto?
+- Compare EUR/USD, GBP/JPY, and AUD/USD for the London session and rank them by expected_deviation_pips.
+- Analyze USD/JPY for the ny session and focus on confidence, historical_context.expansion_rate, and primary_macro_event.
+- Analyze EUR/GBP with auto session detection, then tell me whether the drivers and agent_guidance support a breakout plan.
+- Analyze NZD/USD during a weekend and explain how the server reports session status and volatility_expectation.
+- For GBP/USD in the London session, combine expected_deviation_pips, confidence, macro_events, and agent_guidance into a trading brief with risk notes.
+
+Agent tips:
+- Pass pairs in slash-separated format such as EUR/USD or GBP/JPY.
+- Use target_session=auto when you want the server to select the current or next eligible session.
+- Read confidence, historical_context, and macro_events together instead of relying on volatility_expectation alone.
+- Check for session="Market Closed" or volatility_expectation="None" before turning the result into an execution plan.
