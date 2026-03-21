@@ -3,14 +3,18 @@ MCP server for forex session analysis.
 Exposes the analyze_forex_session tool via SSE transport for web hosting.
 """
 import json
+import os
+from uuid import UUID
 from typing import Any
+from ctxprotocol import ContextError, is_protected_mcp_method, verify_context_request
 from mcp.server import Server
-from mcp.server.sse import SseServerTransport
-from mcp.types import Tool, TextContent, CallToolResult
+from mcp.server.sse import SseServerTransport, ServerMessageMetadata, SessionMessage, types
+from mcp.types import CallToolResult, ErrorData, JSONRPCError, Tool, TextContent
+from pydantic import ValidationError
 from tools.session_analyzer import analyze_forex_session
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 import uvicorn
 
@@ -178,6 +182,43 @@ async def call_tool(name: str, arguments: Any):
 sse = SseServerTransport("/messages")
 
 
+def _get_context_audience() -> str | None:
+    return (
+        os.environ.get("CTXPROTOCOL_AUDIENCE")
+        or os.environ.get("CONTEXT_PROTOCOL_AUDIENCE")
+        or os.environ.get("CONTEXT_AUDIENCE")
+    )
+
+
+def _jsonrpc_auth_error(message_id: str | int | None, error: ContextError) -> JSONResponse:
+    if message_id is None:
+        return JSONResponse(
+            {
+                "error": "Unauthorized",
+                "details": error.message,
+                "code": error.code or "unauthorized",
+            },
+            status_code=error.status_code or 401,
+        )
+
+    response = JSONRPCError(
+        jsonrpc="2.0",
+        id=message_id,
+        error=ErrorData(
+            code=-32001,
+            message="Unauthorized",
+            data={
+                "details": error.message,
+                "code": error.code or "unauthorized",
+            },
+        ),
+    )
+    return JSONResponse(
+        response.model_dump(mode="json"),
+        status_code=error.status_code or 401,
+    )
+
+
 async def handle_sse(request: Request) -> Response:
     """
     SSE endpoint — keeps the long-lived connection open for the full MCP session.
@@ -190,7 +231,61 @@ async def handle_sse(request: Request) -> Response:
 
 
 async def handle_messages(request: Request) -> Response:
-    
+    security_error = await sse._security.validate_request(request, is_post=True)
+    if security_error:
+        return security_error
+
+    session_id_param = request.query_params.get("session_id")
+    if session_id_param is None:
+        return Response("session_id is required", status_code=400)
+
+    try:
+        session_id = UUID(hex=session_id_param)
+    except ValueError:
+        return Response("Invalid session ID", status_code=400)
+
+    writer = sse._read_stream_writers.get(session_id)
+    if not writer:
+        return Response("Could not find session", status_code=404)
+
+    body = await request.body()
+    try:
+        message = types.JSONRPCMessage.model_validate_json(body)
+    except ValidationError as err:
+        captured_status = 400
+        captured_headers: dict[str, str] = {}
+        captured_body = b""
+
+        async def parsing_error_send(asgi_message: dict) -> None:
+            nonlocal captured_status, captured_headers, captured_body
+            if asgi_message["type"] == "http.response.start":
+                captured_status = asgi_message.get("status", 400)
+                captured_headers = {
+                    k.decode("latin-1"): v.decode("latin-1")
+                    for k, v in asgi_message.get("headers", [])
+                }
+            elif asgi_message["type"] == "http.response.body":
+                captured_body = asgi_message.get("body", b"")
+
+        error_response = Response("Could not parse message", status_code=400)
+        await error_response(request.scope, request.receive, parsing_error_send)
+        await writer.send(err)
+        return Response(
+            content=captured_body,
+            status_code=captured_status,
+            headers=captured_headers,
+        )
+
+    method = getattr(message.root, "method", None)
+    if method and is_protected_mcp_method(method):
+        try:
+            request.state.context_protocol = await verify_context_request(
+                authorization_header=request.headers.get("authorization"),
+                audience=_get_context_audience(),
+            )
+        except ContextError as err:
+            return _jsonrpc_auth_error(getattr(message.root, "id", None), err)
+
     captured_status = 202
     captured_headers: dict[str, str] = {}
     captured_body = b""
@@ -207,7 +302,13 @@ async def handle_messages(request: Request) -> Response:
         elif message["type"] == "http.response.body":
             captured_body = message.get("body", b"")
 
-    await sse.handle_post_message(request.scope, request.receive, capturing_send)
+    metadata = ServerMessageMetadata(request_context=request)
+    session_message = SessionMessage(message, metadata=metadata)
+
+    response = Response("Accepted", status_code=202)
+    await response(request.scope, request.receive, capturing_send)
+    await writer.send(session_message)
+
     return Response(
         content=captured_body,
         status_code=captured_status,
@@ -224,6 +325,5 @@ web_app = Starlette(
 )
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(web_app, host="0.0.0.0", port=port)
